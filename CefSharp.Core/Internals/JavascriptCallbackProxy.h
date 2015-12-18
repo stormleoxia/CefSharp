@@ -51,9 +51,14 @@ namespace CefSharp
                 _disposed = true;
             }
 
-            virtual Task<JavascriptResponse^>^ ExecuteAsync(array<Object^>^ parameters);
+            virtual Task<JavascriptResponse^>^ ExecuteAsync(cli::array<Object^>^ parameters);
 
             virtual property bool IsDisposed
+            {
+                bool get();
+            }
+
+            virtual property bool CanExecute
             {
                 bool get();
             }

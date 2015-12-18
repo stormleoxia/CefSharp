@@ -18,6 +18,7 @@
 #include "CefSettings.h"
 #include "SchemeHandlerFactoryWrapper.h"
 #include "Internals/CefTaskScheduler.h"
+#include "Internals/CefGetGeolocationCallbackWrapper.h"
 
 using namespace System::Collections::Generic; 
 using namespace System::Linq;
@@ -219,6 +220,26 @@ namespace CefSharp
         static void DoMessageLoopWork()
         {
             CefDoMessageLoopWork();
+        }
+
+
+        /// <summary>
+        /// This function should be called from the application entry point function to execute a secondary process.
+        /// It can be used to run secondary processes from the browser client executable (default behavior) or
+        /// from a separate executable specified by the CefSettings.browser_subprocess_path value.
+        /// If called for the browser process (identified by no "type" command-line value) it will return immediately with a value of -1.
+        /// If called for a recognized secondary process it will block until the process should exit and then return the process exit code.
+        /// The |application| parameter may be empty. The |windows_sandbox_info| parameter is only used on Windows and may be NULL (see cef_sandbox_win.h for details). 
+        /// </summary>
+        static int ExecuteProcess()
+        {
+            auto hInstance = Process::GetCurrentProcess()->Handle;
+
+            CefMainArgs cefMainArgs((HINSTANCE)hInstance.ToPointer());
+            //TODO: Look at ways to expose an instance of CefApp
+            //CefRefPtr<CefSharpApp> app(new CefSharpApp(nullptr, nullptr));
+
+            return CefExecuteProcess(cefMainArgs, NULL, NULL);
         }
 
         /// <summary>Add an entry to the cross-origin whitelist.</summary>
@@ -427,6 +448,31 @@ namespace CefSharp
         static void ForceWebPluginShutdown(String^ path)
         {
             CefForceWebPluginShutdown(StringUtils::ToNative(path));
+        }
+
+        /// <summary>
+        /// Call during process startup to enable High-DPI support on Windows 7 or newer.
+        /// Older versions of Windows should be left DPI-unaware because they do not
+        /// support DirectWrite and GDI fonts are kerned very badly.
+        /// </summary>
+        static void EnableHighDPISupport()
+        {
+            CefEnableHighDPISupport();
+        }
+
+        /// <summary>
+        /// Request a one-time geolocation update.
+        /// This function bypasses any user permission checks so should only be
+        /// used by code that is allowed to access location information. 
+        /// </summary>
+        /// <return>Returns 'best available' location info or, if the location update failed, with error info.</return>
+        static Task<Geoposition^>^ GetGeolocationAsync()
+        {
+            auto callback = new CefGetGeolocationCallbackWrapper();
+            
+            CefGetGeolocation(callback);
+
+            return callback->GetTask();
         }
     };
 }

@@ -6,6 +6,7 @@
 #include "include\cef_client.h"
 
 #include "CefBrowserHostWrapper.h"
+#include "CefPdfPrintCallbackWrapper.h"
 #include "WindowInfo.h"
 #include "CefTaskScheduler.h"
 #include "Cef.h"
@@ -22,6 +23,31 @@ void CefBrowserHostWrapper::Print()
     ThrowIfDisposed();
 
     _browserHost->Print();
+}
+
+Task<bool>^ CefBrowserHostWrapper::PrintToPdfAsync(String^ path, PdfPrintSettings^ settings)
+{
+    CefPdfPrintSettings nativeSettings;
+    if (settings != nullptr)
+    {
+        StringUtils::AssignNativeFromClr(nativeSettings.header_footer_title, settings->HeaderFooterTitle);
+        StringUtils::AssignNativeFromClr(nativeSettings.header_footer_url, settings->HeaderFooterUrl);
+        nativeSettings.backgrounds_enabled = settings->BackgroundsEnabled ? 1 : 0;
+        nativeSettings.header_footer_enabled = settings->HeaderFooterEnabled ? 1 : 0;
+        nativeSettings.landscape = settings->Landscape ? 1 : 0;
+        nativeSettings.selection_only = settings->SelectionOnly ? 1 : 0;
+        nativeSettings.margin_bottom = settings->MarginBottom;
+        nativeSettings.margin_top = settings->MarginTop;
+        nativeSettings.margin_left = settings->MarginLeft;
+        nativeSettings.margin_right = settings->MarginRight;
+        nativeSettings.page_height = settings->PageHeight;
+        nativeSettings.page_width = settings->PageWidth;
+        nativeSettings.margin_type = static_cast<cef_pdf_print_margin_type_t>(settings->MarginType);
+    }
+
+    auto printToPdfTask = gcnew TaskPrintToPdf();
+    _browserHost->PrintToPDF(StringUtils::ToNative(path), nativeSettings, new CefPdfPrintCallbackWrapper(printToPdfTask));
+    return printToPdfTask->Task;
 }
 
 void CefBrowserHostWrapper::SetZoomLevel(double zoomLevel)
@@ -201,4 +227,14 @@ void CefBrowserHostWrapper::SendMouseMoveEvent(int x, int y, bool mouseLeave, Ce
     mouseEvent.modifiers = (uint32)modifiers;
 
     _browserHost->SendMouseMoveEvent(mouseEvent, mouseLeave);
+}
+
+int CefBrowserHostWrapper::WindowlessFrameRate::get()
+{
+    return _browserHost->GetWindowlessFrameRate();
+}
+
+void CefBrowserHostWrapper::WindowlessFrameRate::set(int val)
+{
+    _browserHost->SetWindowlessFrameRate(val);
 }

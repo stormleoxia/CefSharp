@@ -18,6 +18,11 @@ namespace CefSharp.Example
 
         bool IRequestHandler.OnOpenUrlFromTab(IWebBrowser browserControl, IBrowser browser, IFrame frame, string targetUrl, WindowOpenDisposition targetDisposition, bool userGesture)
         {
+            return OnOpenUrlFromTab(browserControl, browser, frame, targetUrl, targetDisposition, userGesture);
+        }
+
+        protected virtual bool OnOpenUrlFromTab(IWebBrowser browserControl, IBrowser browser, IFrame frame, string targetUrl, WindowOpenDisposition targetDisposition, bool userGesture)
+        {
             return false;
         }
 
@@ -49,6 +54,20 @@ namespace CefSharp.Example
 
         CefReturnValue IRequestHandler.OnBeforeResourceLoad(IWebBrowser browserControl, IBrowser browser, IFrame frame, IRequest request, IRequestCallback callback)
         {
+            //Example of how to set Referer
+            // Same should work when setting any header
+
+            // For this example only set Referer when using our custom scheme
+            var url = new Uri(request.Url);
+            if (url.Scheme == CefSharpSchemeHandlerFactory.SchemeName)
+            {
+                var headers = request.Headers;
+
+                headers["Referer"] = "http://google.com";
+
+                request.Headers = headers;
+            }
+
             //NOTE: If you do not wish to implement this method returning false is the default behaviour
             // We also suggest you explicitly Dispose of the callback as it wraps an unmanaged resource.
             //callback.Dispose();
@@ -63,15 +82,18 @@ namespace CefSharp.Example
                     {
                         using (var postData = request.PostData)
                         {
-                            var elements = postData.Elements;
+                            if(postData != null)
+                            { 
+                                var elements = postData.Elements;
 
-                            var charSet = request.GetCharSet();
+                                var charSet = request.GetCharSet();
 
-                            foreach (var element in elements)
-                            {
-                                if (element.Type == PostDataElementType.Bytes)
+                                foreach (var element in elements)
                                 {
-                                    var body = element.GetBody(charSet);
+                                    if (element.Type == PostDataElementType.Bytes)
+                                    {
+                                        var body = element.GetBody(charSet);
+                                    }
                                 }
                             }
                         }
@@ -99,18 +121,6 @@ namespace CefSharp.Example
 
             callback.Dispose();
             return false;
-        }
-
-        bool IRequestHandler.OnBeforePluginLoad(IWebBrowser browserControl, IBrowser browser, string url, string policyUrl, WebPluginInfo info)
-        {
-            bool blockPluginLoad = false;
-
-            // Enable next line to demo: Block any plugin with "flash" in its name
-            // try it out with e.g. http://www.youtube.com/watch?v=0uBOtQOO70Y
-            //blockPluginLoad = info.Name.ToLower().Contains("flash");
-
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-            return blockPluginLoad;
         }
 
         void IRequestHandler.OnRenderProcessTerminated(IWebBrowser browserControl, IBrowser browser, CefTerminationStatus status)
@@ -157,6 +167,15 @@ namespace CefSharp.Example
         void IRequestHandler.OnRenderViewReady(IWebBrowser browserControl, IBrowser browser)
         {
             
+        }
+
+        bool IRequestHandler.OnResourceResponse(IWebBrowser browserControl, IBrowser browser, IFrame frame, IRequest request, IResponse response)
+        {
+            //NOTE: You cannot modify the response, only the request
+            // You can now access the headers
+            //var headers = response.ResponseHeaders;
+
+            return false;
         }
     }
 }

@@ -55,6 +55,7 @@ namespace CefSharp
             // Note: Contains WebKit image and inspector resources.
             "devtools_resources.pak",
             "cef.pak",
+            "cef_extensions.pak",
             "cef_100_percent.pak",
             "cef_200_percent.pak"
         };
@@ -65,14 +66,7 @@ namespace CefSharp
             // Note: Without these components HTML5 accelerated content like 2D canvas, 3D CSS and WebGL will not function.
             "libEGL.dll",
             "libGLESv2.dll",
-            (IsWindowsXp ? "d3dcompiler_43.dll" : "d3dcompiler_47.dll"),
-            // PDF support
-            // Note: Without this component printing will not function.
-            // Removed from CEF 3.2357, see https://bitbucket.org/chromiumembedded/cef/issue/1565
-            //"pdf.dll",
-            //FFmpeg audio and video support
-            // Note: Without this component HTML5 audio and video will not function.
-            "ffmpegsumo.dll"
+            (IsWindowsXp ? "d3dcompiler_43.dll" : "d3dcompiler_47.dll")
         };
 
         /// <summary>
@@ -103,7 +97,7 @@ namespace CefSharp
         /// <param name="checkOptional">check to see if optional dependencies are present</param>
         /// <param name="packLoadingDisabled">Is loading of pack files disabled?</param>
         /// <param name="path">path to check for dependencies</param>
-        /// <param name="resourcesDirPath"></param>
+        /// <param name="resourcesDirPath">The path to the resources directory, if empty the Executing Assembly path is used.</param>
         /// <param name="browserSubProcessPath">The path to a separate executable that will be launched for sub-processes.</param>
         /// <param name="localePackFile">The locale pack file e.g. <see cref="LocalesPackFile"/> </param>
         /// <returns>List of missing dependencies, if all present an empty List will be returned</returns>
@@ -157,7 +151,7 @@ namespace CefSharp
         /// </summary>
         /// <param name="dir">The directory of the dependencies, or the current directory if null.</param>
         /// <param name="files">The dependencies to check.</param>
-        /// <returns></returns>
+        /// <returns>List of missing dependencies, if all present an empty List will be returned</returns>
         private static List<string> CheckDependencyList(string dir, IEnumerable<string> files)
         {
             var missingDependencies = new List<string>();

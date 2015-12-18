@@ -23,25 +23,12 @@ namespace CefSharp.Wpf.Example.Views
             browser.MenuHandler = new MenuHandler();
             browser.GeolocationHandler = new GeolocationHandler();
             browser.DownloadHandler = new DownloadHandler();
+            //You can specify a custom RequestContext to share settings amount groups of ChromiumWebBrowsers
+            //Also this is now the only way to access OnBeforePluginLoad - need to implement IPluginHandler
+            //browser.RequestContext = new RequestContext(new PluginHandler());
             
-            //NOTE:This code is a workaround for https://github.com/cefsharp/CefSharp/issues/583
-            // The `upstream` issue has been flagged as resolved, so hopefully this can be removed
-            // in the future.
-            //browser.PreviewTextInput += (sender, args) =>
-            //{
-            //    var host = browser.GetBrowser().GetHost();
-            //    var keyEvent = new KeyEvent();
-
-            //    foreach (var character in args.Text)
-            //    {
-            //        keyEvent.WindowsKeyCode = character;
-            //        keyEvent.Type = KeyEventType.Char;
-            //        host.SendKeyEvent(keyEvent);
-            //    }
-
-            //    args.Handled = true;
-            //};
-
+            //browser.RequestContext.RegisterSchemeHandlerFactory(CefSharpSchemeHandlerFactory.SchemeName, null, new CefSharpSchemeHandlerFactory());
+            
             browser.LoadError += (sender, args) =>
             {
                 // Don't display an error for downloaded files.

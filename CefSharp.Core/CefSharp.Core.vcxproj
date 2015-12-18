@@ -1,7 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <Import Project="..\packages\cef.sdk.3.2357.1287\build\cef.sdk.props" Condition="Exists('..\packages\cef.sdk.3.2357.1287\build\cef.sdk.props')" />
-  <Import Project="$(SolutionDir)\packages\cef.sdk.3.2357.1287\build\cef.sdk.props" Condition="Exists('$(SolutionDir)\packages\cef.sdk.3.2357.1287\build\cef.sdk.props')" />
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(SolutionDir)\packages\cef.sdk.3.2454.1344\build\cef.sdk.props" Condition="Exists('$(SolutionDir)\packages\cef.sdk.3.2454.1344\build\cef.sdk.props')" />
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -67,7 +66,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>11.0.51106.1</_ProjectFileVersion>
-    <NuGetPackageImportStamp>993506fa</NuGetPackageImportStamp>
+    <NuGetPackageImportStamp>530cad74</NuGetPackageImportStamp>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>bin\$(Configuration)\</OutDir>
@@ -248,6 +247,7 @@
   <ItemGroup>
     <ClInclude Include="BrowserSettings.h" />
     <ClInclude Include="Cef.h" />
+    <ClInclude Include="Internals\CefGetGeolocationCallbackWrapper.h" />
     <ClInclude Include="Internals\CefAuthCallbackWrapper.h" />
     <ClInclude Include="Internals\CefBeforeDownloadCallbackWrapper.h" />
     <ClInclude Include="Internals\CefBrowserHostWrapper.h" />
@@ -259,14 +259,17 @@
     <ClInclude Include="Internals\CefFrameWrapper.h" />
     <ClInclude Include="Internals\CefGeolocationCallbackWrapper.h" />
     <ClInclude Include="Internals\CefMenuModelWrapper.h" />
+    <ClInclude Include="Internals\CefPdfPrintCallbackWrapper.h" />
     <ClInclude Include="Internals\CefPostDataElementWrapper.h" />
     <ClInclude Include="Internals\CefPostDataWrapper.h" />
     <ClInclude Include="Internals\CefResponseWrapper.h" />
+    <ClInclude Include="Internals\CefRunContextMenuCallbackWrapper.h" />
     <ClInclude Include="Internals\CefSharpBrowserWrapper.h" />
     <ClInclude Include="Internals\CefSslInfoWrapper.h" />
     <ClInclude Include="Internals\CefTaskScheduler.h" />
     <ClInclude Include="Internals\CefTaskWrapper.h" />
     <ClInclude Include="Internals\CefWrapper.h" />
+    <ClInclude Include="RequestContextHandler.h" />
     <ClInclude Include="WindowInfo.h" />
     <ClInclude Include="Internals\CefCompletionCallbackAdapter.h" />
     <ClInclude Include="Internals\ClientAdapter.h" />

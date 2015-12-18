@@ -10,6 +10,7 @@
 #include "ClientAdapter.h"
 #include "ManagedCefBrowserAdapter.h"
 #include "CefRequestWrapper.h"
+#include "CefResponseWrapper.h"
 #include "CefContextMenuParamsWrapper.h"
 #include "CefMenuModelWrapper.h"
 #include "CefDragDataWrapper.h"
@@ -22,6 +23,7 @@
 #include "CefAuthCallbackWrapper.h"
 #include "CefJSDialogCallbackWrapper.h"
 #include "CefRequestCallbackWrapper.h"
+#include "CefRunContextMenuCallbackWrapper.h"
 #include "WindowInfo.h"
 #include "Serialization\Primitives.h"
 #include "Serialization\V8Serialization.h"
@@ -38,15 +40,18 @@ namespace CefSharp
     {
         IBrowser^ ClientAdapter::GetBrowserWrapper(int browserId)
         {
-            if (_cefBrowser->GetIdentifier() == browserId)
+            if (_cefBrowser.get())
             {
-                return _browserAdapter->GetBrowser();
-            }
+                if (_cefBrowser->GetIdentifier() == browserId)
+                {
+                    return _browserAdapter->GetBrowser();
+                }
 
-            IBrowser^ browserWrapper;
-            if (_popupBrowsers->TryGetValue(browserId, browserWrapper))
-            {
-                return browserWrapper;
+                IBrowser^ browserWrapper;
+                if (_popupBrowsers->TryGetValue(browserId, browserWrapper))
+                {
+                    return browserWrapper;
+                }
             }
 
             return nullptr;
@@ -300,6 +305,18 @@ namespace CefSharp
             }
         }
 
+        void ClientAdapter::OnFullscreenModeChange(CefRefPtr<CefBrowser> browser, bool fullscreen)
+        {
+            auto handler = _browserControl->DisplayHandler;
+
+            if (handler != nullptr)
+            {
+                auto browserWrapper = GetBrowserWrapper(browser->GetIdentifier(), browser->IsPopup());
+
+                handler->OnFullscreenModeChange(_browserControl, browserWrapper, fullscreen);
+            }
+        }
+
         bool ClientAdapter::OnTooltip(CefRefPtr<CefBrowser> browser, CefString& text)
         {
             auto tooltip = StringUtils::ToClr(text);
@@ -513,26 +530,6 @@ namespace CefSharp
             return handler->OnQuotaRequest(_browserControl, browserWrapper, StringUtils::ToClr(originUrl), newSize, requestCallback);
         }
 
-        // CEF3 API: public virtual bool OnBeforePluginLoad( CefRefPtr< CefBrowser > browser, const CefString& url, const CefString& policy_url, CefRefPtr< CefWebPluginInfo > info );
-        // ---
-        // return value:
-        //     false: Load Plugin (do not block it)
-        //     true:  Ignore Plugin (Block it)
-        bool ClientAdapter::OnBeforePluginLoad(CefRefPtr<CefBrowser> browser, const CefString& url, const CefString& policy_url, CefRefPtr<CefWebPluginInfo> info)
-        {
-            auto handler = _browserControl->RequestHandler;
-
-            if (handler == nullptr)
-            {
-                return false;
-            }
-
-            auto pluginInfo = TypeConversion::FromNative(info);
-            auto browserWrapper = GetBrowserWrapper(browser->GetIdentifier(), browser->IsPopup());
-
-            return handler->OnBeforePluginLoad(_browserControl, browserWrapper, StringUtils::ToClr(url), StringUtils::ToClr(policy_url), pluginInfo);
-        }
-
         void ClientAdapter::OnPluginCrashed(CefRefPtr<CefBrowser> browser, const CefString& plugin_path)
         {
             auto handler = _browserControl->RequestHandler;
@@ -599,6 +596,23 @@ namespace CefSharp
 
                 newUrl = StringUtils::ToNative(managedNewUrl);
             }
+        }
+
+        bool ClientAdapter::OnResourceResponse(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefRequest> request, CefRefPtr<CefResponse> response)
+        {
+            auto handler = _browserControl->RequestHandler;
+
+            if (handler == nullptr)
+            {
+                return false;
+            }
+                
+            auto browserWrapper = GetBrowserWrapper(browser->GetIdentifier(), browser->IsPopup());;
+            CefFrameWrapper frameWrapper(frame);
+            CefRequestWrapper requestWrapper(request);
+            CefResponseWrapper responseWrapper(response);
+
+            return handler->OnResourceResponse(_browserControl, browserWrapper, %frameWrapper, %requestWrapper, %responseWrapper);
         }
 
         void ClientAdapter::OnProtocolExecution(CefRefPtr<CefBrowser> browser, const CefString& url, bool& allowOSExecution)
@@ -738,6 +752,25 @@ namespace CefSharp
                 
                 handler->OnContextMenuDismissed(_browserControl, browserWrapper, %frameWrapper);
             }
+        }
+
+        bool ClientAdapter::RunContextMenu(CefRefPtr<CefBrowser> browser, CefRefPtr<CefFrame> frame, CefRefPtr<CefContextMenuParams> params, CefRefPtr<CefMenuModel> model, CefRefPtr<CefRunContextMenuCallback> callback)
+        {
+            auto handler = _browserControl->MenuHandler;
+
+            if (handler == nullptr)
+            {
+                return false;
+            }
+
+            auto browserWrapper = GetBrowserWrapper(browser->GetIdentifier(), browser->IsPopup());
+            CefFrameWrapper frameWrapper(frame);
+            CefContextMenuParamsWrapper contextMenuParamsWrapper(params);
+            CefMenuModelWrapper menuModelWrapper(model);
+
+            auto callbackWrapper = gcnew CefRunContextMenuCallbackWrapper(callback);
+
+            return handler->RunContextMenu(_browserControl, browserWrapper, %frameWrapper, %contextMenuParamsWrapper, %menuModelWrapper, callbackWrapper);
         }
 
         void ClientAdapter::OnGotFocus(CefRefPtr<CefBrowser> browser)
@@ -881,6 +914,19 @@ namespace CefSharp
             auto browserWrapper = GetBrowserWrapper(browser->GetIdentifier(), browser->IsPopup());
 
             return handler->OnDragEnter(_browserControl, browserWrapper, %dragDataWrapper, (CefSharp::DragOperationsMask)mask);
+        }
+
+        void ClientAdapter::OnDraggableRegionsChanged(CefRefPtr<CefBrowser> browser, const std::vector<CefDraggableRegion>& regions)
+        {
+            auto handler = _browserControl->DragHandler;
+
+            if (handler != nullptr)
+            {
+                auto regionsList = TypeConversion::FromNative(regions);
+                auto browserWrapper = GetBrowserWrapper(browser->GetIdentifier(), browser->IsPopup());
+
+                return handler->OnDraggableRegionsChanged(_browserControl, browserWrapper, regionsList);
+            }
         }
 
         bool ClientAdapter::OnRequestGeolocationPermission(CefRefPtr<CefBrowser> browser, const CefString& requesting_url, int request_id, CefRefPtr<CefGeolocationCallback> callback)

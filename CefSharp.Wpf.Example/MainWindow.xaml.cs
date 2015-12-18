@@ -4,11 +4,13 @@
 
 using System;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using CefSharp.Example;
 using CefSharp.Wpf.Example.Controls;
 using CefSharp.Wpf.Example.ViewModels;
+using Microsoft.Win32;
 
 namespace CefSharp.Wpf.Example
 {
@@ -30,6 +32,7 @@ namespace CefSharp.Wpf.Example
 
             CommandBindings.Add(new CommandBinding(CefSharpCommands.Exit, Exit));
             CommandBindings.Add(new CommandBinding(CefSharpCommands.OpenTabCommand, OpenTabCommandBinding));
+            CommandBindings.Add(new CommandBinding(CefSharpCommands.PrintTabToPdfCommand, PrintToPdfCommandBinding));
 
             Loaded += MainWindowLoaded;
 
@@ -79,42 +82,49 @@ namespace CefSharp.Wpf.Example
             BrowserTabs.Add(new BrowserTabViewModel(url) { ShowSidebar = showSideBar });
         }
 
-        private void OpenTabCommandBinding(object sender, ExecutedRoutedEventArgs e)
+        private async void PrintToPdfCommandBinding(object sender, ExecutedRoutedEventArgs e)
         {
-            var param = e.Parameter.ToString();
-            string url = "";
-
-            switch (param)
+            if (BrowserTabs.Count > 0)
             {
-                case "BindingTest":
+                var originalSource = (FrameworkElement)e.OriginalSource;
+
+                BrowserTabViewModel browserViewModel;
+
+                if (originalSource is MainWindow)
                 {
-                    url = CefExample.BindingTestUrl;
-                    break;
+                    browserViewModel = BrowserTabs[TabControl.SelectedIndex];
                 }
-                case "ListPlugins":
+                else
                 {
-                    url = CefExample.PluginsTestUrl;
-                    break;
+                    browserViewModel = (BrowserTabViewModel)originalSource.DataContext;
                 }
-                case "PopupTest":
+
+                var dialog = new SaveFileDialog
                 {
-                    url = CefExample.PopupParentUrl;
-                    break;
-                }
-                case "FishGl":
+                    DefaultExt = ".pdf",
+                    Filter = "Pdf documents (.pdf)|*.pdf"
+                };
+
+                if (dialog.ShowDialog() == true)
                 {
-                    url = "http://www.fishgl.com/";
-                    break;
-                }
-                case "MsTestDrive":
-                {
-                    url = "http://dev.modern.ie/testdrive/";
-                    break;
-                }
-                case "DragDemo":
-                {
-                    url = "http://html5demos.com/drag";
-                    break;
+                    var success = await browserViewModel.WebBrowser.PrintToPdfAsync(dialog.FileName, new PdfPrintSettings
+                    {
+                        MarginType = CefPdfPrintMarginType.Custom,
+                        MarginBottom = 10,
+                        MarginTop = 0,
+                        MarginLeft = 20,
+                        MarginRight = 10,
+                    });
+
+                    if(success)
+                    {
+                        MessageBox.Show("Pdf was saved to " + dialog.FileName);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Unable to save Pdf, check you have write permissions to " + dialog.FileName);
+                    }
+                    
                 }
                 case "PopupTestCustomScheme":
                 {
@@ -122,7 +132,12 @@ namespace CefSharp.Wpf.Example
                     break;
                 }
             }
+        }
 
+        private void OpenTabCommandBinding(object sender, ExecutedRoutedEventArgs e)
+        {
+            var url = e.Parameter.ToString();
+            
             if (string.IsNullOrEmpty(url))
             {
                 throw new Exception("Please provide a valid command parameter for binding");

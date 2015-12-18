@@ -22,7 +22,7 @@ namespace CefSharp.OffScreen.Example
             Console.WriteLine();
 
             // You need to replace this with your own call to Cef.Initialize();
-            CefExample.Init();
+            CefExample.Init(true, multiThreadedMessageLoop:true);
 
             MainAsync("cachePath1", 1.0);
             //Demo showing Zoom Level of 3.0
@@ -55,7 +55,7 @@ namespace CefSharp.OffScreen.Example
                     browser.FrameLoadStart += (s, argsi) =>
                     {
                         var b = (ChromiumWebBrowser)s;
-                        if (argsi.IsMainFrame)
+                        if (argsi.Frame.IsMain)
                         {
                             b.SetZoomLevel(zoomLevel);
                         }

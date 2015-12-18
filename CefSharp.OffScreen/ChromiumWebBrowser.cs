@@ -13,7 +13,7 @@ namespace CefSharp.OffScreen
     /// An offscreen instance of Chromium that you can use to take
     /// snapshots or evaluate JavaScript.
     /// </summary>
-    public class ChromiumWebBrowser : IRenderWebBrowser, IScreenshotWebBrowser
+    public class ChromiumWebBrowser : IRenderWebBrowser
     {
         private ManagedCefBrowserAdapter managedCefBrowserAdapter;
 
@@ -43,8 +43,6 @@ namespace CefSharp.OffScreen
         public bool IsBrowserInitialized { get; private set; }
         public bool IsLoading { get; set; }
         public string TooltipText { get; set; }
-        [Obsolete("Use IsLoading instead (inverse of this property)")]
-        public bool CanReload { get; private set; }
         public string Address { get; private set; }
         public bool CanGoBack { get; private set; }
         public bool CanGoForward { get; private set; }
@@ -109,7 +107,7 @@ namespace CefSharp.OffScreen
 
             if(automaticallyCreateBrowser)
             {
-                CreateBrowser(IntPtr.Zero, address, browserSettings, requestcontext);
+                CreateBrowser(IntPtr.Zero);
             }
             
         }
@@ -170,13 +168,11 @@ namespace CefSharp.OffScreen
         }
 
         /// <summary>
-        /// Create the underlying browser
+        /// Create the underlying browser. The instance address, browser settings and request context will be used.
         /// </summary>
         /// <param name="windowHandle">Window handle if any, IntPtr.Zero is the default</param>
-        /// <param name="address">Initial address (url) to load</param>
-        /// <param name="browserSettings">The browser settings to use. If null, the default settings are used.</param>
-        /// <param name="requestcontext">See <see cref="RequestContext"/> for more details. Defaults to null</param>
-        public void CreateBrowser(IntPtr windowHandle, string address = "", BrowserSettings browserSettings = null, RequestContext requestcontext = null)
+        
+        public void CreateBrowser(IntPtr windowHandle)
         {
             if (browserCreated)
             {
@@ -185,7 +181,7 @@ namespace CefSharp.OffScreen
 
             browserCreated = true;
 
-            managedCefBrowserAdapter.CreateOffscreenBrowser(windowHandle, browserSettings, requestcontext, address);
+            managedCefBrowserAdapter.CreateOffscreenBrowser(windowHandle, BrowserSettings, RequestContext, Address);
         }
 
         /// <summary>
@@ -222,15 +218,7 @@ namespace CefSharp.OffScreen
         {
             lock (BitmapLock)
             {
-                try
-                {
-                    return bitmap == null ? null : new Bitmap(bitmap);
-                }
-                catch (Exception)
-                {
-                    // Catch any exception (bitmap could be invalid)
-                }
-                return null;
+                return bitmap == null ? null : new Bitmap(bitmap);
             }
         }
 
@@ -485,7 +473,6 @@ namespace CefSharp.OffScreen
         {
             CanGoBack = args.CanGoBack;
             CanGoForward = args.CanGoForward;
-            CanReload = !args.IsLoading;
             IsLoading = args.IsLoading;
 
             var handler = LoadingStateChanged;

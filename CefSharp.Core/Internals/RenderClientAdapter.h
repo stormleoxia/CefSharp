@@ -87,7 +87,7 @@ namespace CefSharp
                 }
 
                 auto viewRect = _renderWebBrowser->GetViewRect();
-;
+
                 rect = CefRect(0, 0, viewRect.Width, viewRect.Height);
 
                 return true;
