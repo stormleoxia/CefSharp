@@ -8,6 +8,8 @@ using CefSharp.Wpf.Rendering;
 using Microsoft.Win32.SafeHandles;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -16,11 +18,14 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Image = System.Windows.Controls.Image;
+using Point = System.Windows.Point;
 
 namespace CefSharp.Wpf
 {
-    public class ChromiumWebBrowser : ContentControl, IRenderWebBrowser, IWpfWebBrowser
+    public class ChromiumWebBrowser : ContentControl, IRenderWebBrowser, IWpfWebBrowser, IScreenshotWebBrowser
     {
         private readonly List<IDisposable> disposables = new List<IDisposable>();
 
@@ -37,6 +42,17 @@ namespace CefSharp.Wpf
         private Image popupImage;
         private Popup popup;
         private volatile int disposeCount;
+
+        /// <summary>
+        /// Contains the last rendering from Chromium.
+        /// </summary>
+        private BitmapSource _bitmapSource;
+
+        /// <summary>
+        /// Need a lock because the caller may be asking for the bitmap
+        /// while Chromium async rendering has returned on another thread.
+        /// </summary>
+        public readonly object BitmapLock = new object();
 
         public BrowserSettings BrowserSettings { get; set; }
         public RequestContext RequestContext { get; set; }
@@ -61,6 +77,12 @@ namespace CefSharp.Wpf
         public event EventHandler<FrameLoadEndEventArgs> FrameLoadEnd;
         public event EventHandler<LoadErrorEventArgs> LoadError;
         public event EventHandler<LoadingStateChangedEventArgs> LoadingStateChanged;
+         
+        /// <summary>
+        /// Fired by a separate thread when Chrome has re-rendered.
+        /// This means that a Bitmap will be returned by ScreenshotOrNull().
+        /// </summary>
+        public event EventHandler NewScreenshot;
 
         /// <summary>
         /// Raised before each render cycle, and allows you to adjust the bitmap before it's rendered/applied
@@ -303,7 +325,7 @@ namespace CefSharp.Wpf
             UiThreadRunAsync(delegate
             {
                 lock (bitmapInfo.BitmapLock)
-                {
+                {                    
                     var wpfBitmapInfo = (WpfBitmapInfo)bitmapInfo;
                     // Inform parents that the browser rendering is updating
                     OnRendering(this, wpfBitmapInfo);
@@ -316,13 +338,86 @@ namespace CefSharp.Wpf
                         img.Source = null;
                         GC.Collect(1);
 
-                        img.Source = wpfBitmapInfo.CreateBitmap();
+                        lock (BitmapLock)
+                        {
+                            _bitmapSource = wpfBitmapInfo.CreateBitmap();
+
+                            img.Source = _bitmapSource;
+                        }
                     }
 
                     wpfBitmapInfo.Invalidate();
                 }
+                var handler = NewScreenshot;
+                if (handler != null)
+                {
+                    handler(this, EventArgs.Empty);
+                }
             },
             DispatcherPriority.Render);
+        }
+
+        private System.Drawing.Bitmap BitmapFromSource(BitmapSource bitmapsource)
+        {
+            System.Drawing.Bitmap bitmap;
+            MemoryStream outStream = new MemoryStream(); // Do not dispose it (expected to be called by the Bitmap.Dispose())
+            BitmapEncoder enc = new BmpBitmapEncoder();
+
+            enc.Frames.Add(BitmapFrame.Create(bitmapsource));
+            enc.Save(outStream);
+            outStream.Flush();
+            bitmap = new System.Drawing.Bitmap(outStream);
+            return bitmap;
+        }
+
+        /// <summary>
+        /// Immediately returns a copy of the last rendering from Chrome,
+        /// or null if no rendering has occurred yet.
+        /// 
+        /// Chrome also renders the page loading, so if you want to see a complete rendering,
+        /// only start this task once your page is loaded (which you can detect via FrameLoadEnd
+        /// or your own heuristics based on evaluating JavaScript).
+        ///
+        /// It is your responsibility to dispose the returned Bitmap.
+        /// 
+        /// The bitmap size is determined by the Size property set earlier.
+        /// </summary>
+        public Bitmap ScreenshotOrNull()
+        {
+            lock (BitmapLock)
+            {
+                return _bitmapSource == null ? null : BitmapFromSource(_bitmapSource);
+            }
+        }
+
+        public Task<Bitmap> ScreenshotAsync(bool ignoreExistingScreenshot = false)
+        {
+            var completionSource = new TaskCompletionSource<Bitmap>();
+            UiThreadRunAsync(() =>
+            {
+                // Try our luck and see if there is already a screenshot, to save us creating a new thread for nothing.
+                var screenshot = ScreenshotOrNull();
+                if (screenshot == null || ignoreExistingScreenshot)
+                {
+                    EventHandler newScreenshot = null;
+                    // otherwise we cannot reference ourselves in the anonymous method below
+
+                    newScreenshot = (sender, e) =>
+                    {
+                        // Chromium has rendered.  Tell the task about it.
+                        NewScreenshot -= newScreenshot;
+
+                        completionSource.SetResult(ScreenshotOrNull());
+                    };
+
+                    NewScreenshot += newScreenshot;
+                }
+                else
+                {
+                    completionSource.SetResult(screenshot);
+                }
+            });
+            return completionSource.Task;
         }
 
         void IRenderWebBrowser.SetPopupSizeAndPosition(int width, int height, int x, int y)
@@ -763,6 +858,8 @@ namespace CefSharp.Wpf
 
         public static readonly DependencyProperty WebBrowserProperty =
             DependencyProperty.Register("WebBrowser", typeof(IWebBrowser), typeof(ChromiumWebBrowser), new UIPropertyMetadata(defaultValue: null));
+
+
 
         #endregion WebBrowser dependency property
 

@@ -13,7 +13,7 @@ namespace CefSharp.OffScreen
     /// An offscreen instance of Chromium that you can use to take
     /// snapshots or evaluate JavaScript.
     /// </summary>
-    public class ChromiumWebBrowser : IRenderWebBrowser
+    public class ChromiumWebBrowser : IRenderWebBrowser, IScreenshotWebBrowser
     {
         private ManagedCefBrowserAdapter managedCefBrowserAdapter;
 
@@ -222,7 +222,15 @@ namespace CefSharp.OffScreen
         {
             lock (BitmapLock)
             {
-                return bitmap == null ? null : new Bitmap(bitmap);
+                try
+                {
+                    return bitmap == null ? null : new Bitmap(bitmap);
+                }
+                catch (Exception)
+                {
+                    // Catch any exception (bitmap could be invalid)
+                }
+                return null;
             }
         }
 

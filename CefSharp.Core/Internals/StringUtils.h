@@ -27,7 +27,7 @@ namespace CefSharp
             [DebuggerStepThrough]
             static String^ StringUtils::ToClr(const cef_string_t& cefStr)
             {
-                return gcnew String(cefStr.str);
+				return gcnew String(cefStr.str);
             }
 
             /// <summary>
@@ -37,7 +37,7 @@ namespace CefSharp
             /// <returns>A .NET string.</returns>
             [DebuggerStepThrough]
             static String^ StringUtils::ToClr(const CefString& cefStr)
-            {
+            {				
                 return gcnew String(cefStr.c_str());
             }
 
